@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  tasks     Task[]
+  quotes    Quote[]
+}
+
+model Lead {
+  id              String     @id @default(cuid())
+  name            String
+  company         String?
+  email           String?
+  phone           String?
+  source          LeadSource @default(OTHER)
+  status          LeadStatus @default(NEW)
+  notes           String?
+  estimatedBudget Int?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  client          Client?
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  WON
+  LOST
+}
+
+enum LeadSource {
+  INSTAGRAM
+  REFERRAL
+  WEBSITE
+  PHONE
+  EMAIL
+  OTHER
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  company   String?
+  email     String?
+  phone     String?
+  address   String?
+  notes     String?
+  leadId    String?   @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  lead      Lead?     @relation(fields: [leadId], references: [id])
+  quotes    Quote[]
+  orders    Order[]
+  invoices  Invoice[]
+}
+
+model Quote {
+  id            String      @id @default(cuid())
+  number        String      @unique
+  clientId      String
+  createdById   String
+  status        QuoteStatus @default(DRAFT)
+  title         String
+  notes         String?
+  validUntil    DateTime
+  subtotalCents Int         @default(0)
+  taxCents      Int         @default(0)
+  totalCents    Int         @default(0)
+  depositPct    Int         @default(30)
+  sentAt        DateTime?
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  client        Client      @relation(fields: [clientId], references: [id])
+  createdBy     User        @relation(fields: [createdById], references: [id])
+  items         QuoteItem[]
+  order         Order?
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+model QuoteItem {
+  id             String @id @default(cuid())
+  quoteId        String
+  position       Int
+  description    String
+  quantity       Float
+  unit           String @default("unité")
+  unitPriceCents Int
+  vatRate        Float  @default(20)
+  totalCents     Int
+  quote          Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  number          String      @unique
+  clientId        String
+  quoteId         String?     @unique
+  status          OrderStatus @default(CONFIRMED)
+  priority        Priority    @default(NORMAL)
+  title           String
+  deliveryDate    DateTime?
+  deliveryMethod  String?
+  notes           String?
+  totalCents      Int
+  depositCents    Int         @default(0)
+  depositPaidAt   DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  client          Client      @relation(fields: [clientId], references: [id])
+  quote           Quote?      @relation(fields: [quoteId], references: [id])
+  productionSteps ProductionStep[]
+  invoices        Invoice[]
+  tasks           Task[]
+}
+
+enum OrderStatus {
+  CONFIRMED
+  IN_PRODUCTION
+  QUALITY_CHECK
+  READY
+  DELIVERED
+  COMPLETED
+  CANCELED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model ProductionStep {
+  id        String     @id @default(cuid())
+  orderId   String
+  name      String
+  technique String?
+  status    StepStatus @default(TODO)
+  position  Int        @default(0)
+  notes     String?
+  doneAt    DateTime?
+  createdAt DateTime   @default(now())
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+enum StepStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  number        String        @unique
+  clientId      String
+  orderId       String?
+  type          InvoiceType   @default(FINAL)
+  status        InvoiceStatus @default(DRAFT)
+  issuedAt      DateTime?
+  dueAt         DateTime?
+  subtotalCents Int
+  taxCents      Int
+  totalCents    Int
+  paidCents     Int           @default(0)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  client        Client        @relation(fields: [clientId], references: [id])
+  order         Order?        @relation(fields: [orderId], references: [id])
+  payments      Payment[]
+}
+
+enum InvoiceType {
+  DEPOSIT
+  FINAL
+  CREDIT_NOTE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELED
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  invoiceId   String
+  amountCents Int
+  method      PaymentMethod @default(BANK_TRANSFER)
+  reference   String?
+  paidAt      DateTime      @default(now())
+  notes       String?
+  invoice     Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CARD
+  CASH
+  CHECK
+  OTHER
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(NORMAL)
+  dueAt       DateTime?
+  doneAt      DateTime?
+  assigneeId  String?
+  orderId     String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  assignee    User?      @relation(fields: [assigneeId], references: [id])
+  order       Order?     @relation(fields: [orderId], references: [id])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELED
+}
+
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}
