@@ -114,3 +114,26 @@ export default async function DashboardPage() {
     </div>
   );
 }
+export function KPI({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  color: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border p-4 flex justify-between">
+      <div>
+        <p className="text-xs text-gray-400">{label}</p>
+        <p className="text-xl font-bold">{value}</p>
+      </div>
+      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${color}`}>
+        {icon}
+      </div>
+    </div>
+  );
+}
