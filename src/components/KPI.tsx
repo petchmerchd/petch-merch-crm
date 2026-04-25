@@ -1,6 +1,6 @@
 import { db } from '@/lib/prisma';
 import { euros } from '@/lib/utils';
-import { KPI } from '@/components/KPI';
+import KPI from '@/components/KPI';
 import Link from 'next/link';
 import {
   TrendingUp,
